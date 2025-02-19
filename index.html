@@ -1,0 +1,242 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>GFS Logistics</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            margin: 0;
+            padding: 20px;
+            background-color: #f5f5f5;
+        }
+
+        .container {
+            max-width: 600px;
+            margin: 0 auto;
+            background: white;
+            padding: 20px;
+            border-radius: 10px;
+            box-shadow: 0 0 10px rgba(0,0,0,0.1);
+        }
+
+        .admin-btn {
+            position: fixed;
+            top: 10px;
+            right: 10px;
+            padding: 10px;
+            background: #007bff;
+            color: white;
+            border: none;
+            border-radius: 5px;
+            cursor: pointer;
+        }
+
+        .step {
+            display: none;
+        }
+
+        .active {
+            display: block;
+        }
+
+        input, textarea, button {
+            width: 100%;
+            padding: 10px;
+            margin: 10px 0;
+            border: 1px solid #ddd;
+            border-radius: 5px;
+        }
+
+        button {
+            background: #28a745;
+            color: white;
+            border: none;
+            cursor: pointer;
+        }
+
+        #adminPanel {
+            display: none;
+        }
+
+        #dataTable {
+            width: 100%;
+            border-collapse: collapse;
+            margin-top: 20px;
+        }
+
+        #dataTable th, #dataTable td {
+            border: 1px solid #ddd;
+            padding: 8px;
+            text-align: left;
+        }
+
+        .submission-options {
+            display: flex;
+            gap: 10px;
+            margin-top: 20px;
+        }
+
+        .submission-options button {
+            flex: 1;
+        }
+    </style>
+</head>
+<body>
+    <button class="admin-btn" onclick="showAdminLogin()">Admin</button>
+
+    <!-- Driver Interface -->
+    <div class="container" id="driverInterface">
+        <div class="step active" id="step1">
+            <h2>Driver Login</h2>
+            <input type="text" id="driverName" placeholder="Enter your name">
+            <button onclick="saveDriverName()">Next</button>
+        </div>
+
+        <div class="step" id="step2">
+            <h2>Paste Message</h2>
+            <textarea id="message" rows="6" placeholder="Paste your message here"></textarea>
+            <button onclick="detectShipment()">Next</button>
+            <button onclick="showSubmissions()">Check Submitted Shipments</button>
+        </div>
+
+        <div class="step" id="step3">
+            <h2>Enter Area</h2>
+            <input type="text" id="area" placeholder="Enter area name">
+            <button onclick="saveData()">Submit</button>
+        </div>
+
+        <div class="step" id="step4">
+            <h2>Submission Successful!</h2>
+            <p>Your shipment has been submitted.</p>
+            <div class="submission-options">
+                <button onclick="submitAnother()">Submit Another</button>
+                <button onclick="showSubmissions()">Check Submitted Shipments</button>
+            </div>
+        </div>
+
+        <div class="step" id="step5">
+            <h2>Your Submitted Shipments</h2>
+            <div id="submissionsList"></div>
+            <button onclick="goBack()">Go Back</button>
+        </div>
+    </div>
+
+    <!-- Admin Panel -->
+    <div class="container" id="adminPanel">
+        <h2>Admin Login</h2>
+        <input type="text" id="adminUser" placeholder="Username">
+        <input type="password" id="adminPass" placeholder="Password">
+        <button onclick="adminLogin()">Login</button>
+        <div id="adminData">
+            <h3>All Submissions</h3>
+            <table id="dataTable">
+                <thead>
+                    <tr>
+                        <th>Driver</th>
+                        <th>Shipment</th>
+                        <th>Area</th>
+                        <th>Date</th>
+                    </tr>
+                </thead>
+                <tbody id="dataBody"></tbody>
+            </table>
+        </div>
+    </div>
+
+    <script>
+        // Data storage using localStorage
+        let submissions = JSON.parse(localStorage.getItem('submissions') || '[]');
+        
+        function saveDriverName() {
+            const name = document.getElementById('driverName').value;
+            if(name) {
+                localStorage.setItem('currentDriver', name);
+                showStep(2);
+            }
+        }
+
+        function detectShipment() {
+            const message = document.getElementById('message').value;
+            const regex = /(DFD|DLGE|GE|CGD|CG|DLY)\d+/g;
+            const matches = message.match(regex);
+            
+            if(matches && matches.length > 0) {
+                localStorage.setItem('currentShipment', matches[0]);
+                showStep(3);
+            } else {
+                alert('No shipment number found!');
+            }
+        }
+
+        function saveData() {
+            const area = document.getElementById('area').value;
+            if(area) {
+                submissions.push({
+                    driver: localStorage.getItem('currentDriver'),
+                    shipment: localStorage.getItem('currentShipment'),
+                    area: area,
+                    date: new Date().toLocaleString()
+                });
+                
+                localStorage.setItem('submissions', JSON.stringify(submissions));
+                showStep(4);
+            }
+        }
+
+        function submitAnother() {
+            showStep(2);
+        }
+
+        function showSubmissions() {
+            const list = document.getElementById('submissionsList');
+            list.innerHTML = submissions
+                .filter(s => s.driver === localStorage.getItem('currentDriver'))
+                .map(s => `<div>${s.shipment} - ${s.area} (${s.date})</div>`)
+                .join('');
+            showStep(5);
+        }
+
+        function goBack() {
+            showStep(2);
+        }
+
+        function showStep(stepNumber) {
+            document.querySelectorAll('.step').forEach(step => step.classList.remove('active'));
+            document.getElementById(`step${stepNumber}`).classList.add('active');
+        }
+
+        // Admin functions
+        function showAdminLogin() {
+            document.getElementById('driverInterface').style.display = 'none';
+            document.getElementById('adminPanel').style.display = 'block';
+        }
+
+        function adminLogin() {
+            const user = document.getElementById('adminUser').value;
+            const pass = document.getElementById('adminPass').value;
+            
+            if(user === "Kashif Bashir" && pass === "558800") {
+                document.getElementById('adminData').style.display = 'block';
+                const tbody = document.getElementById('dataBody');
+                tbody.innerHTML = submissions
+                    .map(s => `<tr>
+                        <td>${s.driver}</td>
+                        <td>${s.shipment}</td>
+                        <td>${s.area}</td>
+                        <td>${s.date}</td>
+                    </tr>`)
+                    .join('');
+            } else {
+                alert('Invalid credentials!');
+            }
+        }
+
+        // Initialize driver interface
+        if(localStorage.getItem('currentDriver')) {
+            showStep(2);
+        }
+    </script>
+</body>
+</html>
